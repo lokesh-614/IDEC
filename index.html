@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DEC & IDEC Psychrometric Process Plotter</title>
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --text: #0f172a;
+      --muted: #64748b;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --dec-color: #ea580c;
+      --idec-color: #059669;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 1.5rem;
+    }
+
+    .container {
+      max-width: 1360px;
+      margin: 0 auto;
+    }
+
+    header {
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    header p {
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 340px 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    @media (max-width: 960px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+
+    .card h2 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .control-group {
+      margin-bottom: 1.15rem;
+    }
+
+    .control-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.35rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+
+    .control-header span.unit {
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    .input-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    input[type="range"] {
+      flex: 1;
+      accent-color: var(--primary);
+      cursor: pointer;
+    }
+
+    input[type="number"] {
+      width: 78px;
+      padding: 0.35rem 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: 0.875rem;
+      text-align: right;
+      color: var(--text);
+    }
+
+    input[type="number"]:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+    }
+
+    .mode-toggle {
+      display: flex;
+      background: #f1f5f9;
+      padding: 0.25rem;
+      border-radius: 8px;
+      margin-bottom: 1.25rem;
+    }
+
+    .mode-toggle button {
+      flex: 1;
+      border: none;
+      background: transparent;
+      padding: 0.45rem 0.5rem;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--muted);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .mode-toggle button.active {
+      background: var(--card);
+      color: var(--primary);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    }
+
+    .preset-btns {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+    }
+
+    .btn-secondary {
+      background: #f1f5f9;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .btn-secondary:hover {
+      background: #e2e8f0;
+    }
+
+    .chart-container {
+      width: 100%;
+      height: 540px;
+    }
+
+    .results-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+      margin-top: 1.25rem;
+    }
+
+    .stat-box {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.9rem 1rem;
+      background: #fcfcfd;
+    }
+
+    .stat-box.dec {
+      border-left: 4px solid var(--dec-color);
+    }
+
+    .stat-box.idec {
+      border-left: 4px solid var(--idec-color);
+    }
+
+    .stat-box.inlet {
+      border-left: 4px solid var(--primary);
+    }
+
+    .stat-title {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      font-weight: 700;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+    }
+
+    .stat-main {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 0.35rem;
+    }
+
+    .stat-details {
+      font-size: 0.82rem;
+      color: #334155;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.25rem 0.5rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1.25rem;
+      font-size: 0.85rem;
+    }
+
+    th, td {
+      padding: 0.6rem 0.75rem;
+      text-align: right;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th:first-child, td:first-child {
+      text-align: left;
+      font-weight: 600;
+    }
+
+    th {
+      background: #f8fafc;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.15rem 0.45rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+
+    .badge-in { background: #dbeafe; color: #1e40af; }
+    .badge-dec { background: #ffedd5; color: #9a3412; }
+    .badge-idec1 { background: #d1fae5; color: #065f46; }
+    .badge-idec2 { background: #a7f3d0; color: #064e3b; }
+
+    .warning-msg {
+      font-size: 0.8rem;
+      color: #b91c1c;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      padding: 0.5rem 0.75rem;
+      border-radius: 6px;
+      margin-top: 0.75rem;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Psychrometric Process Plotter: DEC vs. IDEC</h1>
+        <p>Interactive thermodynamic state solver &amp; ASHRAE psychrometric chart visualizer</p>
+      </div>
+      <div class="preset-btns">
+        <button class="btn-secondary" onclick="applyPreset(38, 38, 0.80, 0.80)">User Case (38°C, 38% RH)</button>
+        <button class="btn-secondary" onclick="applyPreset(44, 18, 0.85, 0.85)">Hot &amp; Dry (44°C, 18% RH)</button>
+        <button class="btn-secondary" onclick="applyPreset(35, 55, 0.80, 0.80)">Warm &amp; Humid (35°C, 55% RH)</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <!-- Left Sidebar: Controls -->
+      <div class="card">
+        <h2>Inlet Air &amp; Effectiveness</h2>
+
+        <div class="mode-toggle">
+          <button id="btnModeRH" class="active" onclick="setInputMode('RH')">Input DBT + RH (%)</button>
+          <button id="btnModeWBT" onclick="setInputMode('WBT')">Input DBT + WBT (°C)</button>
+        </div>
+
+        <div class="control-group">
+          <div class="control-header">
+            <label for="dbtInput">Inlet Dry Bulb Temp (DBT)</label>
+            <span class="unit">°C</span>
+          </div>
+          <div class="input-row">
+            <input type="range" id="dbtSlider" min="15" max="50" step="0.5" value="38" />
+            <input type="number" id="dbtInput" min="15" max="50" step="0.1" value="38" />
+          </div>
+        </div>
+
+        <div class="control-group" id="rhGroup">
+          <div class="control-header">
+            <label for="rhInput">Inlet Relative Humidity (RH)</label>
+            <span class="unit">%</span>
+          </div>
+          <div class="input-row">
+            <input type="range" id="rhSlider" min="5" max="100" step="1" value="38" />
+            <input type="number" id="rhInput" min="5" max="100" step="0.1" value="38" />
+          </div>
+        </div>
+
+        <div class="control-group" id="wbtGroup" style="display: none;">
+          <div class="control-header">
+            <label for="wbtInput">Inlet Wet Bulb Temp (WBT)</label>
+            <span class="unit">°C</span>
+          </div>
+          <div class="input-row">
+            <input type="range" id="wbtSlider" min="5" max="40" step="0.2" value="25.8" />
+            <input type="number" id="wbtInput" min="5" max="40" step="0.1" value="25.8" />
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="control-header">
+            <label for="effIecInput">Indirect Stage Effectiveness (&epsilon;<sub>IEC</sub>)</label>
+            <span class="unit">0 – 1.0</span>
+          </div>
+          <div class="input-row">
+            <input type="range" id="effIecSlider" min="0" max="1" step="0.01" value="0.80" />
+            <input type="number" id="effIecInput" min="0" max="1" step="0.01" value="0.80" />
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="control-header">
+            <label for="effDecInput">Direct Stage Effectiveness (&epsilon;<sub>DEC</sub>)</label>
+            <span class="unit">0 – 1.0</span>
+          </div>
+          <div class="input-row">
+            <input type="range" id="effDecSlider" min="0" max="1" step="0.01" value="0.80" />
+            <input type="number" id="effDecInput" min="0" max="1" step="0.01" value="0.80" />
+          </div>
+        </div>
+
+        <div class="control-group">
+          <div class="control-header">
+            <label for="pressInput">Atmospheric Pressure (P)</label>
+            <span class="unit">kPa</span>
+          </div>
+          <div class="input-row">
+            <input type="range" id="pressSlider" min="75" max="105" step="0.25" value="101.325" />
+            <input type="number" id="pressInput" min="75" max="105" step="0.01" value="101.325" />
+          </div>
+        </div>
+
+        <div id="warningBox" class="warning-msg">
+          WBT cannot exceed DBT. WBT has been clamped to DBT (100% RH).
+        </div>
+      </div>
+
+      <!-- Right Area: Chart + Data Table -->
+      <div class="card">
+        <div id="psychroChart" class="chart-container"></div>
+
+        <div class="results-grid">
+          <div class="stat-box inlet">
+            <div class="stat-title">1. Ambient Inlet Air</div>
+            <div class="stat-main" id="cardInMain">38.0 °C / 38.0% RH</div>
+            <div class="stat-details">
+              <span>WBT: <strong id="cardInWbt">25.8 °C</strong></span>
+              <span>DPT: <strong id="cardInDpt">21.1 °C</strong></span>
+              <span>&omega;: <strong id="cardInW">15.9 g/kg</strong></span>
+              <span>h: <strong id="cardInH">79.0 kJ/kg</strong></span>
+            </div>
+          </div>
+
+          <div class="stat-box dec">
+            <div class="stat-title">2. Pure DEC Outlet</div>
+            <div class="stat-main" id="cardDecMain">28.3 °C / 82.6% RH</div>
+            <div class="stat-details">
+              <span>WBT: <strong id="cardDecWbt">25.8 °C</strong></span>
+              <span>&Delta;T: <strong id="cardDecDt">-9.7 °C</strong></span>
+              <span>&omega;: <strong id="cardDecW">20.1 g/kg</strong></span>
+              <span>h: <strong id="cardDecH">79.7 kJ/kg</strong></span>
+            </div>
+          </div>
+
+          <div class="stat-box idec">
+            <div class="stat-title">3. Two-Stage IDEC Outlet</div>
+            <div class="stat-main" id="cardIdecMain">24.3 °C / 91.5% RH</div>
+            <div class="stat-details">
+              <span>WBT: <strong id="cardIdecWbt">23.3 °C</strong></span>
+              <span>&Delta;T: <strong id="cardIdecDt">-13.7 °C</strong></span>
+              <span>&omega;: <strong id="cardIdecW">17.6 g/kg</strong></span>
+              <span>h: <strong id="cardIdecH">69.1 kJ/kg</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>State Point</th>
+              <th>DBT (°C)</th>
+              <th>WBT (°C)</th>
+              <th>DPT (°C)</th>
+              <th>RH (%)</th>
+              <th>Humidity Ratio &omega; (g/kg)</th>
+              <th>Enthalpy h (kJ/kg)</th>
+            </tr>
+          </thead>
+          <tbody id="stateTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let inputMode = 'RH'; // 'RH' or 'WBT'
+
+    // Psychrometric equations (Magnus-Tetens + ASHRAE fundamentals)
+    function satVapourPressure(T) {
+      // T in °C, returns kPa
+      return 0.61078 * Math.exp((17.27 * T) / (T + 237.3));
+    }
+
+    function dewPointFromPv(Pv) {
+      // Pv in kPa, returns °C
+      if (Pv <= 0.01) return -40;
+      const lnRatio = Math.log(Pv / 0.61078);
+      return (237.3 * lnRatio) / (17.27 - lnRatio);
+    }
+
+    function humidityRatioFromPv(Pv, P) {
+      // returns g/kg dry air
+      return (621.98 * Pv) / Math.max(P - Pv, 0.1);
+    }
+
+    function enthalpyFromTdW(Td, W_g_kg) {
+      // W in g/kg -> convert to kg/kg
+      const W = W_g_kg / 1000.0;
+      return 1.006 * Td + W * (2501 + 1.86 * Td);
+    }
+
+    function pvFromTdTw(Td, Tw, P) {
+      // Psychrometric relation using psychrometric coefficient A = 0.000662 / °C
+      const Pvs_w = satVapourPressure(Tw);
+      const Pv = Pvs_w - 0.000662 * P * (Td - Tw);
+      return Math.max(Pv, 0.01);
+    }
+
+    function solveWbtFromTdRh(Td, RH, P) {
+      const Pv_target = (RH / 100.0) * satVapourPressure(Td);
+      if (RH >= 99.99) return Td;
+      // Newton-Raphson iteration
+      let Tw = Td - (100 - RH) / 5.0;
+      for (let i = 0; i < 40; i++) {
+        const Pvs_w = satVapourPressure(Tw);
+        const f = Pvs_w - 0.000662 * P * (Td - Tw) - Pv_target;
+        const dPvs_dTw = (Pvs_w * 17.27 * 237.3) / Math.pow(Tw + 237.3, 2);
+        const df = dPvs_dTw + 0.000662 * P;
+        const step = f / df;
+        Tw -= step;
+        if (Math.abs(step) < 1e-6) break;
+      }
+      return Math.min(Tw, Td);
+    }
+
+    function computeStateFromTdRh(Td, RH, P) {
+      const clampedRh = Math.min(Math.max(RH, 0.1), 100.0);
+      const Pv = (clampedRh / 100.0) * satVapourPressure(Td);
+      const Tw = solveWbtFromTdRh(Td, clampedRh, P);
+      const Dpt = dewPointFromPv(Pv);
+      const W = humidityRatioFromPv(Pv, P);
+      const h = enthalpyFromTdW(Td, W);
+      return { Td, Tw, Dpt, RH: clampedRh, Pv, W, h };
+    }
+
+    function computeStateFromTdTw(Td, Tw, P) {
+      const clampedTw = Math.min(Tw, Td);
+      const Pv = pvFromTdTw(Td, clampedTw, P);
+      const Pvs = satVapourPressure(Td);
+      const RH = Math.min(Math.max((Pv / Pvs) * 100.0, 0.1), 100.0);
+      const Dpt = dewPointFromPv(Pv);
+      const W = humidityRatioFromPv(Pv, P);
+      const h = enthalpyFromTdW(Td, W);
+      return { Td, Tw: clampedTw, Dpt, RH, Pv, W, h };
+    }
+
+    // Bind sliders and numeric inputs
+    function bindPair(sliderId, inputId) {
+      const slider = document.getElementById(sliderId);
+      const input = document.getElementById(inputId);
+      slider.addEventListener('input', () => {
+        input.value = slider.value;
+        updateAll();
+      });
+      input.addEventListener('input', () => {
+        if (input.value !== '') {
+          slider.value = input.value;
+          updateAll();
+        }
+      });
+    }
+
+    bindPair('dbtSlider', 'dbtInput');
+    bindPair('rhSlider', 'rhInput');
+    bindPair('wbtSlider', 'wbtInput');
+    bindPair('effIecSlider', 'effIecInput');
+    bindPair('effDecSlider', 'effDecInput');
+    bindPair('pressSlider', 'pressInput');
+
+    function setInputMode(mode) {
+      inputMode = mode;
+      document.getElementById('btnModeRH').classList.toggle('active', mode === 'RH');
+      document.getElementById('btnModeWBT').classList.toggle('active', mode === 'WBT');
+      document.getElementById('rhGroup').style.display = mode === 'RH' ? 'block' : 'none';
+      document.getElementById('wbtGroup').style.display = mode === 'WBT' ? 'block' : 'none';
+      updateAll();
+    }
+
+    function applyPreset(dbt, rh, effIec, effDec) {
+      setInputMode('RH');
+      document.getElementById('dbtInput').value = dbt;
+      document.getElementById('dbtSlider').value = dbt;
+      document.getElementById('rhInput').value = rh;
+      document.getElementById('rhSlider').value = rh;
+      document.getElementById('effIecInput').value = effIec;
+      document.getElementById('effIecSlider').value = effIec;
+      document.getElementById('effDecInput').value = effDec;
+      document.getElementById('effDecSlider').value = effDec;
+      updateAll();
+    }
+
+    function generateBackgroundTraces(P) {
+      const traces = [];
+      const tVals = [];
+      for (let t = 10; t <= 50; t += 0.5) {
+        tVals.push(t);
+      }
+
+      // 1. Constant RH curves (10% to 100%)
+      const rhLevels = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
+      rhLevels.forEach((rh) => {
+        const x = [];
+        const y = [];
+        tVals.forEach((t) => {
+          const Pv = (rh / 100.0) * satVapourPressure(t);
+          const w = humidityRatioFromPv(Pv, P);
+          if (w <= 32) {
+            x.push(t);
+            y.push(w);
+          }
+        });
+        traces.push({
+          x,
+          y,
+          mode: 'lines',
+          name: rh === 100 ? 'Saturation (100% RH)' : `${rh}% RH`,
+          line: {
+            color: rh === 100 ? '#475569' : '#cbd5e1',
+            width: rh === 100 ? 2 : 1,
+            dash: rh === 100 ? 'solid' : 'dot'
+          },
+          hoverinfo: 'skip',
+          showlegend: false
+        });
+      });
+
+      // 2. Constant WBT lines (every 5°C from 10°C to 35°C)
+      const wbtLevels = [10, 15, 20, 25, 30, 35];
+      wbtLevels.forEach((tw) => {
+        const x = [];
+        const y = [];
+        for (let td = tw; td <= 50; td += 1) {
+          const Pv = pvFromTdTw(td, tw, P);
+          const w = humidityRatioFromPv(Pv, P);
+          if (w >= 0 && w <= 32) {
+            x.push(td);
+            y.push(w);
+          }
+        }
+        traces.push({
+          x,
+          y,
+          mode: 'lines',
+          line: {
+            color: '#e2e8f0',
+            width: 1,
+            dash: 'dash'
+          },
+          hoverinfo: 'skip',
+          showlegend: false
+        });
+      });
+
+      return traces;
+    }
+
+    function updateAll() {
+      const Td1 = parseFloat(document.getElementById('dbtInput').value) || 38;
+      const effIec = Math.min(Math.max(parseFloat(document.getElementById('effIecInput').value) || 0, 0), 1);
+      const effDec = Math.min(Math.max(parseFloat(document.getElementById('effDecInput').value) || 0, 0), 1);
+      const P = parseFloat(document.getElementById('pressInput').value) || 101.325;
+
+      let state1;
+      const warningBox = document.getElementById('warningBox');
+      warningBox.style.display = 'none';
+
+      if (inputMode === 'RH') {
+        const rh1 = parseFloat(document.getElementById('rhInput').value) || 38;
+        state1 = computeStateFromTdRh(Td1, rh1, P);
+        // Sync hidden WBT slider/input
+        document.getElementById('wbtInput').value = state1.Tw.toFixed(2);
+        document.getElementById('wbtSlider').value = state1.Tw.toFixed(2);
+      } else {
+        let tw1 = parseFloat(document.getElementById('wbtInput').value) || 25;
+        if (tw1 > Td1) {
+          tw1 = Td1;
+          warningBox.style.display = 'block';
+        }
+        state1 = computeStateFromTdTw(Td1, tw1, P);
+        // Sync hidden RH slider/input
+        document.getElementById('rhInput').value = state1.RH.toFixed(1);
+        document.getElementById('rhSlider').value = state1.RH.toFixed(1);
+      }
+
+      // Pure DEC Process: Constant WBT = state1.Tw
+      const Td_dec = state1.Td - effDec * (state1.Td - state1.Tw);
+      const stateDec = computeStateFromTdTw(Td_dec, state1.Tw, P);
+
+      // IDEC Stage 1 (Indirect): Sensible cooling (Constant W = state1.W, Pv = state1.Pv)
+      const Td_idec1 = state1.Td - effIec * (state1.Td - state1.Tw);
+      const rh_idec1 = Math.min((state1.Pv / satVapourPressure(Td_idec1)) * 100.0, 100.0);
+      const stateIdec1 = computeStateFromTdRh(Td_idec1, rh_idec1, P);
+
+      // IDEC Stage 2 (Direct): Adiabatic cooling from stateIdec1 along constant WBT = stateIdec1.Tw
+      const Td_idec2 = stateIdec1.Td - effDec * (stateIdec1.Td - stateIdec1.Tw);
+      const stateIdec2 = computeStateFromTdTw(Td_idec2, stateIdec1.Tw, P);
+
+      // Update Summary Cards
+      document.getElementById('cardInMain').textContent = `${state1.Td.toFixed(1)} °C / ${state1.RH.toFixed(1)}% RH`;
+      document.getElementById('cardInWbt').textContent = `${state1.Tw.toFixed(2)} °C`;
+      document.getElementById('cardInDpt').textContent = `${state1.Dpt.toFixed(2)} °C`;
+      document.getElementById('cardInW').textContent = `${state1.W.toFixed(2)} g/kg`;
+      document.getElementById('cardInH').textContent = `${state1.h.toFixed(1)} kJ/kg`;
+
+      document.getElementById('cardDecMain').textContent = `${stateDec.Td.toFixed(1)} °C / ${stateDec.RH.toFixed(1)}% RH`;
+      document.getElementById('cardDecWbt').textContent = `${stateDec.Tw.toFixed(2)} °C`;
+      document.getElementById('cardDecDt').textContent = `${(stateDec.Td - state1.Td).toFixed(1)} °C`;
+      document.getElementById('cardDecW').textContent = `${stateDec.W.toFixed(2)} g/kg`;
+      document.getElementById('cardDecH').textContent = `${stateDec.h.toFixed(1)} kJ/kg`;
+
+      document.getElementById('cardIdecMain').textContent = `${stateIdec2.Td.toFixed(1)} °C / ${stateIdec2.RH.toFixed(1)}% RH`;
+      document.getElementById('cardIdecWbt').textContent = `${stateIdec2.Tw.toFixed(2)} °C`;
+      document.getElementById('cardIdecDt').textContent = `${(stateIdec2.Td - state1.Td).toFixed(1)} °C`;
+      document.getElementById('cardIdecW').textContent = `${stateIdec2.W.toFixed(2)} g/kg`;
+      document.getElementById('cardIdecH').textContent = `${stateIdec2.h.toFixed(1)} kJ/kg`;
+
+      // Update Table
+      const rows = [
+        { label: '1. Ambient Inlet', badge: 'badge-in', st: state1 },
+        { label: '2. Pure DEC Outlet', badge: 'badge-dec', st: stateDec },
+        { label: '3a. IDEC Indirect Stage Out', badge: 'badge-idec1', st: stateIdec1 },
+        { label: '3b. IDEC Direct Stage Out (Final)', badge: 'badge-idec2', st: stateIdec2 }
+      ];
+
+      const tbody = document.getElementById('stateTableBody');
+      tbody.innerHTML = rows
+        .map(
+          (r) => `
+          <tr>
+            <td><span class="badge ${r.badge}">${r.label}</span></td>
+            <td>${r.st.Td.toFixed(2)}</td>
+            <td>${r.st.Tw.toFixed(2)}</td>
+            <td>${r.st.Dpt.toFixed(2)}</td>
+            <td>${r.st.RH.toFixed(1)}</td>
+            <td>${r.st.W.toFixed(2)}</td>
+            <td>${r.st.h.toFixed(2)}</td>
+          </tr>`
+        )
+        .join('');
+
+      // Build Plotly Traces
+      const bgTraces = generateBackgroundTraces(P);
+
+      const decTrace = {
+        x: [state1.Td, stateDec.Td],
+        y: [state1.W, stateDec.W],
+        mode: 'lines+markers+text',
+        name: `Pure DEC (&epsilon;=${effDec.toFixed(2)})`,
+        text: ['', 'DEC Out'],
+        textposition: 'top left',
+        textfont: { color: '#ea580c', size: 12, family: 'sans-serif' },
+        line: { color: '#ea580c', width: 3.5 },
+        marker: { size: 9, color: '#ea580c' },
+        hovertemplate:
+          '<b>Pure DEC</b><br>DBT: %{x:.2f} °C<br>&omega;: %{y:.2f} g/kg<extra></extra>'
+      };
+
+      const idecTrace = {
+        x: [state1.Td, stateIdec1.Td, stateIdec2.Td],
+        y: [state1.W, stateIdec1.W, stateIdec2.W],
+        mode: 'lines+markers+text',
+        name: `Two-Stage IDEC (&epsilon;<sub>IEC</sub>=${effIec.toFixed(2)}, &epsilon;<sub>DEC</sub>=${effDec.toFixed(2)})`,
+        text: ['Inlet', 'IEC Out', 'IDEC Out'],
+        textposition: ['top right', 'bottom center', 'top left'],
+        textfont: { color: '#059669', size: 12, family: 'sans-serif' },
+        line: { color: '#059669', width: 3.5 },
+        marker: { size: 9, color: ['#2563eb', '#10b981', '#059669'] },
+        hovertemplate:
+          '<b>IDEC Path</b><br>DBT: %{x:.2f} °C<br>&omega;: %{y:.2f} g/kg<extra></extra>'
+      };
+
+      // Annotations for RH curves along right/top boundary
+      const annotations = [20, 40, 60, 80, 100].map((rh) => {
+        const tRef = rh === 100 ? 31.5 : 46;
+        const Pv = (rh / 100.0) * satVapourPressure(tRef);
+        const w = humidityRatioFromPv(Pv, P);
+        return {
+          x: tRef,
+          y: Math.min(w, 30.5),
+          text: `${rh}% RH`,
+          showarrow: false,
+          font: { size: 10, color: '#64748b' },
+          yshift: 8
+        };
+      });
+
+      const layout = {
+        title: {
+          text: `Psychrometric Chart (P = ${P.toFixed(2)} kPa)`,
+          font: { size: 15, color: '#0f172a' }
+        },
+        xaxis: {
+          title: 'Dry Bulb Temperature, DBT (°C)',
+          range: [10, 50],
+          dtick: 5,
+          gridcolor: '#f1f5f9',
+          zeroline: false
+        },
+        yaxis: {
+          title: 'Humidity Ratio, &omega; (g<sub>w</sub> / kg<sub>da</sub>)',
+          side: 'right',
+          range: [0, 32],
+          dtick: 5,
+          gridcolor: '#f1f5f9',
+          zeroline: false
+        },
+        legend: {
+          orientation: 'h',
+          y: 1.08,
+          x: 0
+        },
+        annotations,
+        margin: { l: 30, r: 65, t: 65, b: 50 },
+        paper_bgcolor: '#ffffff',
+        plot_bgcolor: '#ffffff',
+        hovermode: 'closest'
+      };
+
+      Plotly.react('psychroChart', [...bgTraces, decTrace, idecTrace], layout, {
+        responsive: true,
+        displayModeBar: true,
+        modeBarButtonsToRemove: ['lasso2d', 'select2d']
+      });
+    }
+
+    // Initial render
+    updateAll();
+  </script>
+</body>
+</html>
